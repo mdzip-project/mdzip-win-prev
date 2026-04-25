@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/mdz.WinPrev/mdz.WinPrev.csproj" />
+  <Project Path="src/mdz.WinPrev.Tests/mdz.WinPrev.Tests.csproj" />
+</Solution>
