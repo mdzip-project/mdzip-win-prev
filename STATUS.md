@@ -1,5 +1,5 @@
-Status: idle
-Last: (no recorded activity)
+Status: ready-to-commit
+Last: Updated mdzip-core dependency to 1.3.0
 
 Version: 0.0.0
 

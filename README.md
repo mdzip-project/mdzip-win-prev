@@ -79,7 +79,7 @@ dotnet test src/mdz.WinPrev.Tests/mdz.WinPrev.Tests.csproj
 
 | Package | Purpose |
 |---------|---------|
-| [`mdzip-core`](https://www.nuget.org/packages/mdzip-core) `1.1.0` | .mdz archive reading, manifest parsing, entry-point resolution |
+| [`mdzip-core`](https://www.nuget.org/packages/mdzip-core) `1.3.0` | .mdz archive reading, manifest parsing, entry-point resolution |
 | [`Markdig`](https://www.nuget.org/packages/Markdig) `0.40.0` | Markdown-to-HTML rendering with advanced extensions (tables, code highlighting anchors, …) |
 
 ## License
