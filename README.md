@@ -40,7 +40,7 @@ For the Windows COM host (`mdz.WinPrev.comhost.dll`) used by the registration
 scripts, build on Windows:
 
 ```powershell
-dotnet publish src/mdz.WinPrev/mdz.WinPrev.csproj -c Release -r win-x64 --self-contained false
+dotnet publish src/mdz.WinPrev/mdz.WinPrev.csproj -c Release -f net8.0-windows -r win-x64 --self-contained false
 ```
 
 ## Installation
@@ -51,11 +51,22 @@ Run the following from an **elevated** (Administrator) PowerShell session:
 .\scripts\install.ps1 -DllPath "<path-to>\mdz.WinPrev.comhost.dll"
 ```
 
+To register a custom Explorer icon for `.mdz` files, pass an `.ico`, `.exe`, or
+`.dll` icon source:
+
+```powershell
+.\scripts\install.ps1 -DllPath "<path-to>\mdz.WinPrev.comhost.dll" -IconPath "<path-to>\mdzip.ico"
+```
+
+When `-IconPath` is omitted, the installer uses the sibling
+`..\mdzip-mark\ico\mdzip-mark-square.ico` icon if it is present.
+
 The script:
 1. Registers the CLSID `{CA7A244F-7A83-4B5E-9D7A-9F13EF5E8B3A}` under `HKCR\CLSID`.
 2. Adds the preview handler to the `.mdz` file extension shell extension keys.
 3. Adds the handler to the Windows Preview Handler list.
-4. Notifies the shell of the change.
+4. Registers a shell icon for the active `.mdz` ProgID.
+5. Notifies the shell of the change.
 
 You may need to restart Windows Explorer (`taskkill /f /im explorer.exe && start explorer`) for the change to take effect.
 

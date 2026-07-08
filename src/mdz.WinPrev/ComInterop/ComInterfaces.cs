@@ -64,6 +64,21 @@ internal interface IOleWindow
 }
 
 /// <summary>
+/// Provides the host site to the preview handler.
+/// </summary>
+[ComImport]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+[Guid("FC4801A3-2BA9-11CF-A229-00AA003D7352")]
+internal interface IObjectWithSite
+{
+    /// <summary>Sets the site's IUnknown pointer.</summary>
+    void SetSite([MarshalAs(UnmanagedType.IUnknown)] object? pUnkSite);
+
+    /// <summary>Retrieves the last site set with <see cref="SetSite"/>.</summary>
+    void GetSite(ref Guid riid, out IntPtr ppvSite);
+}
+
+/// <summary>
 /// Allows the preview handler to provide visual theming support.
 /// </summary>
 [ComImport]

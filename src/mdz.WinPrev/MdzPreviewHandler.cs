@@ -32,6 +32,7 @@ public sealed class MdzPreviewHandler :
     IPreviewHandler,
     IInitializeWithFile,
     IOleWindow,
+    IObjectWithSite,
     IPreviewHandlerVisuals
 {
     // -------------------------------------------------------------------------
@@ -41,10 +42,17 @@ public sealed class MdzPreviewHandler :
     private string? _filePath;
     private IntPtr _parentHwnd;
     private RECT _previewRect;
-    private PreviewPanel? _panel;
+    private PreviewUiThread? _uiThread;
+    private IntPtr _panelHandle;
     private string? _tempDir;
+    private object? _site;
 
     private static readonly MdzRenderer Renderer = new();
+
+    public MdzPreviewHandler()
+    {
+        DebugLog("constructed");
+    }
 
     // -------------------------------------------------------------------------
     // IInitializeWithFile
@@ -53,6 +61,7 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IInitializeWithFile.Initialize(string pszFilePath, uint grfMode)
     {
+        DebugLog($"Initialize file='{pszFilePath}' mode={grfMode}");
         _filePath = pszFilePath;
     }
 
@@ -63,6 +72,7 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IPreviewHandler.SetWindow(IntPtr hwnd, ref RECT prc)
     {
+        DebugLog($"SetWindow hwnd={hwnd} rect={FormatRect(prc)}");
         _parentHwnd = hwnd;
         _previewRect = prc;
         UpdatePanelBounds();
@@ -71,6 +81,7 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IPreviewHandler.SetRect(ref RECT prc)
     {
+        DebugLog($"SetRect rect={FormatRect(prc)}");
         _previewRect = prc;
         UpdatePanelBounds();
     }
@@ -78,6 +89,7 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IPreviewHandler.DoPreview()
     {
+        DebugLog($"DoPreview file='{_filePath ?? "<null>"}'");
         if (string.IsNullOrEmpty(_filePath))
             return;
 
@@ -86,16 +98,21 @@ public sealed class MdzPreviewHandler :
         try
         {
             _tempDir = ExtractAssetsToTemp(_filePath);
+            DebugLog($"Extracted assets to '{_tempDir}'");
             var html = Renderer.Render(_filePath, _tempDir);
-            _panel!.ShowHtml(html);
+            DebugLog($"Rendered HTML length={html.Length}");
+            _uiThread!.ShowHtml(html);
+            DebugLog("ShowHtml completed");
         }
         catch (ProjectModeNotSupportedException ex)
         {
-            _panel!.ShowMessage("Project mode not supported", ex.Message);
+            DebugLog("ProjectModeNotSupportedException: " + ex);
+            _uiThread!.ShowMessage("Project mode not supported", ex.Message);
         }
         catch (Exception ex)
         {
-            _panel!.ShowMessage(
+            DebugLog("Exception: " + ex);
+            _uiThread!.ShowMessage(
                 "Preview unavailable",
                 $"The file could not be previewed: {HtmlEncode(ex.Message)}");
         }
@@ -104,6 +121,7 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IPreviewHandler.Unload()
     {
+        DebugLog("Unload");
         DisposePanel();
         CleanupTemp();
         _filePath = null;
@@ -112,13 +130,15 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IPreviewHandler.SetFocus()
     {
-        _panel?.Focus();
+        DebugLog("SetFocus");
+        _uiThread?.Focus();
     }
 
     /// <inheritdoc />
     void IPreviewHandler.QueryFocus(out IntPtr phwnd)
     {
-        phwnd = _panel?.Handle ?? IntPtr.Zero;
+        phwnd = _panelHandle;
+        DebugLog($"QueryFocus hwnd={phwnd}");
     }
 
     /// <inheritdoc />
@@ -136,11 +156,46 @@ public sealed class MdzPreviewHandler :
     /// <inheritdoc />
     void IOleWindow.GetWindow(out IntPtr phwnd)
     {
-        phwnd = _panel?.Handle ?? IntPtr.Zero;
+        phwnd = _panelHandle;
+        DebugLog($"GetWindow hwnd={phwnd}");
     }
 
     /// <inheritdoc />
     void IOleWindow.ContextSensitiveHelp(bool fEnterMode) { /* not implemented */ }
+
+    // -------------------------------------------------------------------------
+    // IObjectWithSite
+    // -------------------------------------------------------------------------
+
+    /// <inheritdoc />
+    void IObjectWithSite.SetSite(object? pUnkSite)
+    {
+        DebugLog($"SetSite null={pUnkSite is null}");
+        _site = pUnkSite;
+    }
+
+    /// <inheritdoc />
+    void IObjectWithSite.GetSite(ref Guid riid, out IntPtr ppvSite)
+    {
+        DebugLog($"GetSite riid={riid}");
+        ppvSite = IntPtr.Zero;
+
+        if (_site is null)
+        {
+            Marshal.ThrowExceptionForHR(unchecked((int)0x80004005)); // E_FAIL
+            return;
+        }
+
+        var unknown = Marshal.GetIUnknownForObject(_site);
+        try
+        {
+            Marshal.QueryInterface(unknown, ref riid, out ppvSite);
+        }
+        finally
+        {
+            Marshal.Release(unknown);
+        }
+    }
 
     // -------------------------------------------------------------------------
     // IPreviewHandlerVisuals
@@ -161,37 +216,55 @@ public sealed class MdzPreviewHandler :
 
     private void EnsurePanelCreated()
     {
-        if (_panel is not null)
+        if (_uiThread is not null)
             return;
 
-        _panel = new PreviewPanel();
+        DebugLog("Creating PreviewPanel UI thread");
+        _uiThread = new PreviewUiThread(DebugLog);
+        _panelHandle = _uiThread.Handle;
+        DebugLog($"PreviewPanel handle={_panelHandle}");
 
         if (_parentHwnd != IntPtr.Zero)
         {
-            SetParent(_panel.Handle, _parentHwnd);
+            SetParent(_panelHandle, _parentHwnd);
             UpdatePanelBounds();
-            _panel.Show();
+            _uiThread.Show();
+            DebugLog("PreviewPanel parented and shown");
+        }
+        else
+        {
+            DebugLog("PreviewPanel created without parent hwnd");
         }
     }
 
     private void UpdatePanelBounds()
     {
-        if (_panel is null)
+        if (_uiThread is null)
             return;
 
-        _panel.SetBounds(
-            _previewRect.Left,
-            _previewRect.Top,
-            _previewRect.Right - _previewRect.Left,
-            _previewRect.Bottom - _previewRect.Top);
+        var rect = _previewRect;
+        if ((rect.Right - rect.Left <= 0 || rect.Bottom - rect.Top <= 0) &&
+            _parentHwnd != IntPtr.Zero &&
+            GetClientRect(_parentHwnd, out var parentRect))
+        {
+            rect = parentRect;
+        }
+
+        _uiThread.SetBounds(
+            rect.Left,
+            rect.Top,
+            rect.Right - rect.Left,
+            rect.Bottom - rect.Top);
+        DebugLog($"Panel bounds updated to {FormatRect(rect)}");
     }
 
     private void DisposePanel()
     {
-        if (_panel is null)
+        if (_uiThread is null)
             return;
-        _panel.Dispose();
-        _panel = null;
+        _uiThread.Dispose();
+        _uiThread = null;
+        _panelHandle = IntPtr.Zero;
     }
 
     private void CleanupTemp()
@@ -218,6 +291,132 @@ public sealed class MdzPreviewHandler :
     [DllImport("user32.dll")]
     private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
     private static string HtmlEncode(string text) =>
         text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+
+    private static string FormatRect(RECT rect) =>
+        $"{rect.Left},{rect.Top},{rect.Right},{rect.Bottom}";
+
+    private static void DebugLog(string message)
+    {
+        try
+        {
+            var line = $"{DateTimeOffset.Now:O} pid={Environment.ProcessId} tid={Environment.CurrentManagedThreadId} {message}{Environment.NewLine}";
+            File.AppendAllText(Path.Combine(Path.GetTempPath(), "mdz-win-prev.log"), line);
+        }
+        catch
+        {
+            // Logging must never affect preview activation.
+        }
+    }
+
+    private sealed class PreviewUiThread : IDisposable
+    {
+        private readonly Action<string> _log;
+        private readonly ManualResetEventSlim _ready = new();
+        private readonly Thread _thread;
+        private ApplicationContext? _context;
+        private PreviewPanel? _panel;
+        private Exception? _startupException;
+
+        public PreviewUiThread(Action<string> log)
+        {
+            _log = log;
+            _thread = new Thread(ThreadMain)
+            {
+                IsBackground = true,
+                Name = "MDZip Preview UI",
+            };
+            _thread.SetApartmentState(ApartmentState.STA);
+            _thread.Start();
+
+            if (!_ready.Wait(TimeSpan.FromSeconds(5)))
+                throw new TimeoutException("Timed out creating preview UI thread.");
+
+            if (_startupException is not null)
+                throw new InvalidOperationException("Preview UI thread failed to start.", _startupException);
+        }
+
+        public IntPtr Handle { get; private set; }
+
+        public void Show() => Post(panel => panel.Show());
+
+        public void Focus() => Post(panel => panel.Focus());
+
+        public void SetBounds(int x, int y, int width, int height) =>
+            Post(panel => panel.SetBounds(x, y, Math.Max(0, width), Math.Max(0, height)));
+
+        public void ShowHtml(string html) => Post(panel => panel.ShowHtml(html));
+
+        public void ShowMessage(string heading, string detail) =>
+            Post(panel => panel.ShowMessage(heading, detail));
+
+        public void Dispose()
+        {
+            try
+            {
+                if (_panel is not null && !_panel.IsDisposed)
+                {
+                    _panel.BeginInvoke(new Action(() =>
+                    {
+                        _context?.ExitThread();
+                        _panel.Dispose();
+                    }));
+                }
+            }
+            catch
+            {
+                // Best-effort shutdown; prevhost will release the process if needed.
+            }
+
+            if (_thread.IsAlive)
+                _thread.Join(TimeSpan.FromSeconds(1));
+
+            _ready.Dispose();
+        }
+
+        private void ThreadMain()
+        {
+            try
+            {
+                Application.SetHighDpiMode(HighDpiMode.SystemAware);
+                _panel = new PreviewPanel();
+                _panel.CreateControl();
+                Handle = _panel.Handle;
+                _context = new ApplicationContext();
+                _log($"Preview UI thread ready handle={Handle}");
+                _ready.Set();
+                Application.Run(_context);
+            }
+            catch (Exception ex)
+            {
+                _startupException = ex;
+                _log("Preview UI thread exception: " + ex);
+                _ready.Set();
+            }
+        }
+
+        private void Post(Action<PreviewPanel> action)
+        {
+            var panel = _panel;
+            if (panel is null || panel.IsDisposed)
+                return;
+
+            try
+            {
+                if (panel.InvokeRequired)
+                    panel.BeginInvoke(new Action(() => action(panel)));
+                else
+                    action(panel);
+            }
+            catch (InvalidOperationException)
+            {
+                // The control may already be tearing down.
+            }
+        }
+    }
 }

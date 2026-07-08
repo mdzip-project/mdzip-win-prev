@@ -15,8 +15,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $CLSID          = '{CA7A244F-7A83-4B5E-9D7A-9F13EF5E8B3A}'
+$APPID          = $CLSID
 $PREVIEW_IID    = '{8895b1c6-b41f-4c1c-a562-0d564250836f}'
 $FILE_EXTENSION = '.mdz'
+$DEFAULT_PROGID = 'MDZip.Document'
 
 # ---------------------------------------------------------------------------
 # Administrator check
@@ -57,6 +59,40 @@ if (Test-Path $shellExKey) {
 }
 
 # ---------------------------------------------------------------------------
+# Remove ShellEx key from the active .mdz ProgID association
+# ---------------------------------------------------------------------------
+
+$extKey = "Registry::HKEY_CLASSES_ROOT\$FILE_EXTENSION"
+$progId = (Get-ItemProperty -Path $extKey -Name '(Default)' -ErrorAction SilentlyContinue).'(Default)'
+if ([string]::IsNullOrWhiteSpace($progId)) {
+    $progId = $DEFAULT_PROGID
+}
+
+$progIdShellExKey = "Registry::HKEY_CLASSES_ROOT\$progId\ShellEx\$PREVIEW_IID"
+
+if (Test-Path $progIdShellExKey) {
+    $handler = (Get-ItemProperty -Path $progIdShellExKey -Name '(Default)' -ErrorAction SilentlyContinue).'(Default)'
+    if ($handler -eq $CLSID -and $PSCmdlet.ShouldProcess($progIdShellExKey, 'Remove registry key')) {
+        Remove-Item -Path $progIdShellExKey -Recurse
+        Write-Host "Removed ProgID ShellEx entry."
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Remove shell icon from the active .mdz ProgID association
+# ---------------------------------------------------------------------------
+
+$defaultIconKey = "Registry::HKEY_CLASSES_ROOT\$progId\DefaultIcon"
+
+if (Test-Path $defaultIconKey) {
+    $icon = (Get-ItemProperty -Path $defaultIconKey -Name '(Default)' -ErrorAction SilentlyContinue).'(Default)'
+    if ($icon -like '*mdz.WinPrev*' -and $PSCmdlet.ShouldProcess($defaultIconKey, 'Remove registry key')) {
+        Remove-Item -Path $defaultIconKey -Recurse
+        Write-Host "Removed ProgID DefaultIcon entry."
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Remove CLSID
 # ---------------------------------------------------------------------------
 
@@ -66,6 +102,19 @@ if (Test-Path $clsidKey) {
     if ($PSCmdlet.ShouldProcess($clsidKey, 'Remove registry key')) {
         Remove-Item -Path $clsidKey -Recurse
         Write-Host "Removed CLSID entry."
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Remove AppID
+# ---------------------------------------------------------------------------
+
+$appIdKey = "Registry::HKEY_CLASSES_ROOT\AppID\$APPID"
+
+if (Test-Path $appIdKey) {
+    if ($PSCmdlet.ShouldProcess($appIdKey, 'Remove registry key')) {
+        Remove-Item -Path $appIdKey -Recurse
+        Write-Host "Removed AppID entry."
     }
 }
 
