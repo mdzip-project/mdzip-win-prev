@@ -90,6 +90,9 @@ separate follow-up change.
 - Current COM handler and STA UI thread: `src/mdz.WinPrev/MdzPreviewHandler.cs`
 - Current legacy browser host: `src/mdz.WinPrev/PreviewPanel.cs`
 - Markdown-to-HTML renderer: `src/mdz.WinPrev/MdzRenderer.cs`
-- Prior failed/experimental sibling repositories:
-  - `../mdzip-win-preview`
-  - `../../mdz-win-preview`
+- Prior failed/experimental attempts (both moved to the workspace archive):
+  - `../archive/mdzip-win-preview`
+  - `../archive/mdz-win-preview` — the LocalServer32 + WebView2 attempt; it
+    changed the COM hosting model and the rendering surface at the same
+    time, which is exactly the multi-variable failure mode this document
+    warns against
