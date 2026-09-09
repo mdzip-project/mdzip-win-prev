@@ -28,7 +28,7 @@ ensures relative paths resolve correctly.
 ## Requirements
 
 - Windows 10 or Windows 11 (x64)
-- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ## Building
 
@@ -40,7 +40,7 @@ For the Windows COM host (`mdz.WinPrev.comhost.dll`) used by the registration
 scripts, build on Windows:
 
 ```powershell
-dotnet publish src/mdz.WinPrev/mdz.WinPrev.csproj -c Release -f net8.0-windows -r win-x64 --self-contained false
+dotnet publish src/mdz.WinPrev/mdz.WinPrev.csproj -c Release -f net10.0-windows -r win-x64 --self-contained false
 ```
 
 ## Installation

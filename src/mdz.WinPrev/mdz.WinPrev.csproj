@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <!-- Target Windows for the full shell extension (WinForms + COM). -->
-    <TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
+    <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>mdz.WinPrev</AssemblyName>
@@ -12,14 +12,14 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
-  <!-- Windows Forms + COM hosting: only when targeting net8.0-windows -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+  <!-- Windows Forms + COM hosting: only when targeting net10.0-windows -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <UseWindowsForms>true</UseWindowsForms>
     <EnableComHosting Condition="'$(OS)' == 'Windows_NT'">true</EnableComHosting>
   </PropertyGroup>
 
-  <!-- Exclude Windows-only files from the net8.0 build -->
-  <ItemGroup Condition="'$(TargetFramework)' != 'net8.0-windows'">
+  <!-- Exclude Windows-only files from the net10.0 build -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows'">
     <Compile Remove="ComInterop\ComInterfaces.cs" />
     <Compile Remove="MdzPreviewHandler.cs" />
     <Compile Remove="PreviewPanel.cs" />
