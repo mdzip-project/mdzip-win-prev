@@ -13,6 +13,26 @@ in the preview pane — no external app required.
 > `"mode": "project"` are not rendered; the preview pane shows an
 > informational message instead.
 
+## Installation
+
+For most users this handler is **installed automatically by
+[MDZip Studio](https://github.com/mdzip-project/mdzip-studio)**. Studio's Windows
+installer bundles the built preview handler, and on an **all-users** install it
+offers a "Windows Explorer integration" step (enabled by default) that:
+
+- installs the Microsoft .NET 10 Desktop Runtime if it is missing,
+- registers the COM handler (CLSID `{CA7A244F-7A83-4B5E-9D7A-9F13EF5E8B3A}`) as
+  the `.mdz` shell preview handler and adds it to the Windows Preview Handler
+  list, and
+- registers the `.mdz` / `.md` file icons and "Open with" entries.
+
+A per-user ("Just me") install does **not** register the handler — Explorer
+preview handlers are machine-wide (they live under `HKLM`). Uninstalling MDZip
+Studio removes the registration.
+
+Use this repo's scripts directly only for standalone use without Studio, or for
+development — see [Manual installation](#manual-installation-standalone--development).
+
 ## Architecture
 
 | Component | Description |
@@ -43,9 +63,14 @@ scripts, build on Windows:
 dotnet publish src/mdz.WinPrev/mdz.WinPrev.csproj -c Release -f net10.0-windows -r win-x64 --self-contained false
 ```
 
-## Installation
+MDZip Studio's own release build produces this same output (via
+`scripts/publish-preview-handler.cjs` in the `mdzip-studio` repo) and bundles it
+into its installer.
 
-Run the following from an **elevated** (Administrator) PowerShell session:
+## Manual installation (standalone / development)
+
+Only needed when running the handler without MDZip Studio, or while developing
+it. Run the following from an **elevated** (Administrator) PowerShell session:
 
 ```powershell
 .\scripts\install.ps1 -DllPath "<path-to>\mdz.WinPrev.comhost.dll"
@@ -70,11 +95,13 @@ The script:
 
 You may need to restart Windows Explorer (`taskkill /f /im explorer.exe && start explorer`) for the change to take effect.
 
-## Uninstallation
+### Manual uninstallation
 
 ```powershell
 .\scripts\uninstall.ps1
 ```
+
+(When the handler was installed by MDZip Studio, uninstall Studio instead.)
 
 ## Development
 
@@ -90,7 +117,7 @@ dotnet test src/mdz.WinPrev.Tests/mdz.WinPrev.Tests.csproj
 
 | Package | Purpose |
 |---------|---------|
-| [`mdzip-core`](https://www.nuget.org/packages/mdzip-core) `1.3.0` | .mdz archive reading, manifest parsing, entry-point resolution |
+| [`mdzip-core`](https://www.nuget.org/packages/mdzip-core) `1.3.3` | .mdz archive reading, manifest parsing, entry-point resolution |
 | [`Markdig`](https://www.nuget.org/packages/Markdig) `0.40.0` | Markdown-to-HTML rendering with advanced extensions (tables, code highlighting anchors, …) |
 
 ## License
