@@ -45,6 +45,13 @@ Assets (images, stylesheets) referenced by the entry-point document are
 extracted to a temporary directory; a `<base>` tag in the rendered HTML
 ensures relative paths resolve correctly.
 
+The rendered page is written to that directory too and shown inside an iframe
+with `sandbox="allow-same-origin"`, so the preview never runs scripts from the
+document (`<script>`, `onerror=` and similar; MDZip spec §13.2). The `WebBrowser`
+control runs them otherwise, and its download-control setting can't be reached
+from .NET's `WebBrowserSite`. Remote `https:` images still load; blocking them
+waits for the WebView2 migration (#2), which can filter requests.
+
 ## Requirements
 
 - Windows 10 or Windows 11 (x64)

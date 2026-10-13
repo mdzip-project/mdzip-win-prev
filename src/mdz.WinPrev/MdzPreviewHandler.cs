@@ -101,7 +101,7 @@ public sealed class MdzPreviewHandler :
             DebugLog($"Extracted assets to '{_tempDir}'");
             var html = Renderer.Render(_filePath, _tempDir);
             DebugLog($"Rendered HTML length={html.Length}");
-            _uiThread!.ShowHtml(html);
+            _uiThread!.ShowHtml(html, _tempDir);
             DebugLog("ShowHtml completed");
         }
         catch (ProjectModeNotSupportedException ex)
@@ -350,7 +350,7 @@ public sealed class MdzPreviewHandler :
         public void SetBounds(int x, int y, int width, int height) =>
             Post(panel => panel.SetBounds(x, y, Math.Max(0, width), Math.Max(0, height)));
 
-        public void ShowHtml(string html) => Post(panel => panel.ShowHtml(html));
+        public void ShowHtml(string html, string? folder) => Post(panel => panel.ShowHtml(html, folder));
 
         public void ShowMessage(string heading, string detail) =>
             Post(panel => panel.ShowMessage(heading, detail));
