@@ -88,6 +88,9 @@ internal sealed class MdzRenderer
         sb.AppendLine("<html lang=\"en\">");
         sb.AppendLine("<head>");
         sb.AppendLine("  <meta charset=\"utf-8\">");
+        // The WebBrowser control renders in IE7 mode unless told otherwise, and
+        // IE7 mode can't show SVG images (or much modern CSS).
+        sb.AppendLine("  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">");
         sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
         if (!string.IsNullOrEmpty(baseTag))
             sb.AppendLine($"  {baseTag}");
